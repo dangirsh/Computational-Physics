@@ -1,0 +1,42 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{courier}
+
+\begin{document}
+
+\begin{center}
+Final Project Outline \\
+Three-Body Simulations \\
+Dan Girshovich
+\end{center}
+
+For my final project, I'd like to use numerical methods to simulate and analyze the recently discovered solutions to the three-body problem. \\
+
+Earlier this year, 13 new solutions to the three-body problem were discovered and presented along with a solution classification scheme \cite{suv}. As a first challenge, I'd like to apply an automatic step size Runge-Kutta method (like one in Numerical Recipes \cite{numericalrecipes}) to recreate each of the new solution orbits. The initial conditions are available online \cite{3bsite}, so the main challenge would be to maintain accuracy over long orbits and produce 3D plots. \\
+
+The classification scheme involves a ``shape space sphere'' and is also described online \cite{3bsite}. Collision conditions and the orbits are represented as points and contours on this sphere, respectively. The symmetry properties of these contours with respect to collision points allows for a group theory based categorization of the solution orbits. A second goal for the project will be to generate these ``shape space sphere'' plots for the solutions and briefly describe the classification scheme. For completeness, I will also include the few previously known solutions.\\
+
+The stability of the new solutions is still being explored. I plan on performing a shallow investigation using a Monte Carlo method. Specifically, repeated simulations involving random perturbations to the orbits should give some basic insight into the stability of the solutions. The analysis will include a discussion on how the automatic step size algorithm handles the different types of perturbations. On the same note, any signs of instability will be persuasively, but informally, shown to be a property of the solution itself, and not the Runge-Kutta method.\\
+
+Finally, because these 13 solutions are relatively new, it is expected that slight variations of some of them will produce yet undiscovered solutions \cite{suv}. All 13 are solutions where the three bodies have equal mass and zero total angular momentum. I can implement a basic algorithm that greedily searches for alternate choices of mass and total angular momentum which produce solution orbits (those with finite periods). I realize that any simple method is extremely unlikely to discover a new solution, so I'm putting this challenge under the ``if time'' category.
+
+\begin{thebibliography}{9}
+
+\bibitem{suv}
+    M. Šuvakov and V. Dmitrašinović, Three classes of Newtonian three-body periodic orbits, Phys. Rev. Lett. 110 (2013) 114301
+
+\bibitem{3bsite}
+    http://suki.ipb.ac.rs/3body/
+
+\bibitem{numericalrecipes}
+  W.H. Press, S.A Teukolsky, W. T. Vetterling, and B. P. Flannery,
+  \emph{Numerical Recipies, The Art of Scientific Computing}.
+  Camb. Univ. Press,
+  3rd Edition,
+  2007.
+
+\end{thebibliography}
+
+\end{document}

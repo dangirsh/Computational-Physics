@@ -1,0 +1,11 @@
+global dict for eval
+# masses (= n)
+period
+mass_1
+(x_1,y_1)
+(vx_1, vy_1)
+--optional whitespace--
+...
+mass_n
+(x_n,y_n)
+(vx_n, vy_n)

@@ -1,0 +1,113 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{AEP4380 HW2 - Numerical Integration}
+\author{Dan Girshovich}
+\date{Feb 7, 2013}
+
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{float}
+
+\begin{document}
+
+\maketitle
+
+\section{Purpose}
+This document details the results of the attached C++ program, which performs numerical integration of the elliptic integral of the first kind:
+\begin{align*}
+K(x) = \int_{0}^{\frac{\pi}{2}} \frac{1}{\sqrt{1 - x \sin^2{\theta }}} d\theta \hspace{10mm} (0 \leq  x \leq 1)
+\end{align*}
+This integral was done using the Trapezoidal Rule and Simpson's Rule (equations 4.1.3 and 4.1.4 of Press\citep{numericalrecipies} et al, respectively). A discussion of the results follows.
+
+
+\section{Convergence Tests}
+As the value of x increases over the given interval, the integrand grows more and more quickly. This additional curvature should differentiate the two integration rules at large values of x, since the error bounds of each are proportional to different derivatives of the integrand. Namely, the Trapezoidal Rule is proportional to the second derivative, while Simpson's Rule is proportional to the fourth derivative (page 158 of Press\citep{numericalrecipies}). Therefore, Simpson's Rule should converge more rapidly than the Trapezoidal Rule, and this should be most obvious for high values of x. This expected result is reflected in the tables below.
+
+\subsection{Trapezoidal Rule}
+\begin{tabular}{ l | r }
+\hline
+\multicolumn{2}{ |c| }{X = 0.5} \\ \hline
+N & K(x) \\ \hline
+4 & 1.85407523 \\
+8 & 1.85407468 \\
+16 & 1.85407468 \\
+32 & 1.85407468 \\
+64 & 1.85407468 \\
+128 & 1.85407468 \\
+256 & 1.85407468 \\
+512 & 1.85407468 \\
+1024 & 1.85407468 \\
+2048 & 1.85407468 \\
+4096 & 1.85407468 \\
+\end{tabular}
+\qquad
+\begin{tabular}{ l | r }
+\hline
+\multicolumn{2}{ |c| }{X = 0.9999} \\ \hline
+N & K(x) \\ \hline
+4 & 21.83756024 \\
+8 & 12.71368364 \\
+16 &  8.49387261 \\
+32 &  6.71466565 \\
+64 &  6.11464253 \\
+128 &  5.99808944 \\
+256 &  5.99161698 \\
+512 &  5.99158934 \\
+1024 &  5.99158934 \\
+2048 &  5.99158934 \\
+4096 &  5.99158934 \\
+\end{tabular}
+\subsection{Simpson's Rule}
+\begin{tabular}{ l | r }
+\hline
+\multicolumn{2}{ |c| }{X = 0.5} \\ \hline
+N & K(x) \\ \hline
+4 & 1.85378059 \\
+8 & 1.85407449 \\
+16 & 1.85407468 \\
+32 & 1.85407468 \\
+64 & 1.85407468 \\
+128 & 1.85407468 \\
+256 & 1.85407468 \\
+512 & 1.85407468 \\
+1024 & 1.85407468 \\
+2048 & 1.85407468 \\
+4096 & 1.85407468 \\
+\end{tabular}
+\qquad
+\begin{tabular}{ l | r }
+\hline
+\multicolumn{2}{ |c| }{X = 0.9999} \\ \hline
+N & K(x) \\ \hline
+4 & 15.52565617 \\
+8 & 9.67239144 \\
+16 & 7.08726894 \\
+32 & 6.12159667 \\
+64 & 5.91463482 \\
+128 & 5.95923841 \\
+256 & 5.98945950 \\
+512 & 5.99158013 \\
+1024 & 5.99158934 \\
+2048 & 5.99158934 \\
+4096 & 5.99158934 \\
+\end{tabular}
+
+
+\section{Numerical Solution}
+\subsection{Determine N}
+To choose a value of N that reliably produces 5 significant figures of accuracy, a "true" value of the integral at a worst case x value is required. Based on the convergence results and the domain of the integral, x=0.9999 seems to be a valid worst case. An accurate estimate of K(x = 0.9999) was retrieved from Wolfram Alpha \citep{wolfram}, and the value was 5.99159. Using this and the tables above, it is evident that the desired accuracy is achieved when N = 512.
+\subsection{Results}
+Using N = 512, both integration techniques were run to find the value of the integral for 100 values of x between 0 and 0.9999. As expected, the results from both methods were identical to 5 significant figures. The curve produced from each data set is shown below.
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.5]{trap_graph.png}
+  \caption{A numerical solution for K(x) using 100 data points (using either the Trapezoidal Rule or Simpson's Rule).}
+  \label{fig:nonfloat}
+\end{figure}
+The curve grows from $\frac{\pi}{2}$ at 0 to $\inf$ at 1, which are easily verified to be true for K(x).
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

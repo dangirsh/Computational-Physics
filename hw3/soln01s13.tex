@@ -1,0 +1,193 @@
+%
+%   AEP 438 HW 1 solutions
+%
+%   spring 2013
+%
+%  22-jan-2002 E. Kirkland
+%  changed date 27-jan-2003 ejk
+%  changed date 28-jan-2004 ejk
+%  changed date and switch to dvipdfm 26-jan-2005 ejk
+%  changed date 24-jan-2006 ejk
+%  changed date 29-jan-2007 ejk
+%  changed date 26-jan-2009 ejk
+%  changed date 27-jan-2010 ejk
+%  fix some grammar issues 2-feb-2010 ejk
+%  last modified 22-jan-203 ejk
+%
+\documentclass[11pt,letterpaper]{article}
+
+\setlength{\textwidth}{6.5in}
+\setlength{\textheight}{9in}
+\setlength{\topmargin}{-0.5in}
+\setlength{\oddsidemargin}{0in}
+\setlength{\evensidemargin}{0in}
+
+\setlength{\parskip}{0.1in}
+\setlength{\parindent}{0.5in}
+
+%\pagestyle{empty}  % get rid of page numbers
+\pagestyle{myheadings}
+\markboth{{ AEP4380}, Solution 1, Spring 2013}
+{{ AEP4380}, Solution 1, Spring 2013}
+
+\usepackage[dvipdfm]{graphics}  % for complicated illustrations
+%\usepackage[pdftex]{graphicx}  % for complicated illustrations with non-eps graphics
+%\usepackage[dvips]{graphics}  % for complicated illustrations
+
+
+\begin{document}
+
+\begin{center}
+\underline{\bf \large Numerical Differentiation }
+\end{center}
+
+{\em
+    You are not required to turn in a written solution to this homework problem.  
+However, I will still hand out a solution set to give you an idea of the format of the 
+homework solutions that will come later.  Note that the solution set that is handed out 
+may occasionally contain a longer discussion of some subjects than is formally required.
+}
+
+Numerical differentiation techniques will be tested on the following function:
+\begin{eqnarray}
+f(x) & = & \sin(x) \exp ( -0.04x^2 )
+\end{eqnarray}
+The first derivative of $f(x)$, $f'(x)$ may be calculated three different way:
+\begin{eqnarray}
+f_{FD}'(x) & = & \frac{ f(x+h) - f(x) }{h} + \mathcal{O}(h) \mbox{~~~forward difference} \\
+f_{BD}'(x) & = & \frac{ f(x) - f(x-h) }{h} + \mathcal{O}(h)  \mbox{~~~backward difference} \\
+f_{CD}'(x) & = & \frac{ f(x+h) - f(x-h) }{2h} + \mathcal{O}(h^2) 
+                \mbox{~~~central difference} 
+\end{eqnarray}
+where $h$ is small compared to $x$. The forward and backward difference methods may have 
+a significantly larger error than the central difference method.  Alternately the forward and 
+backward difference may be viewed as a central difference method offset by 
++h/2 and -h/2 respectively.  $f'(x)$ from all three methods was evaluated at 200 points 
+between -7.0 and +7.0  using h=0.5 and h=0.05.  These three forms of the first derivative 
+were calculated using the program listed at the end, and the results are shown
+below along with the function $f(x)$ in Figure \ref{fbigh} and \ref{fsmallh} 
+(FD= forward difference,  BD= 
+backward difference, CD= central difference). The program was run twice, once with 
+h=0.5 and once with h=0.05.  (The program also calculates the second derivative that 
+follows.)
+
+As can be seen from the Figure \ref{fbigh},  h=0.5 is too large and the three methods yield very 
+different results.  The forward difference (FD) and the backward difference (BD)
+appear to be shifted consistent with their interpretation as a shifted central difference.  
+The second plot (Figure \ref{fsmallh}) with h=0.05 shows that this value of h is small
+enough to yield an accurate (and consistent) calculation of the first derivative.
+
+\begin{figure}[htb!]
+\begin{center}
+\leavevmode
+\resizebox{4.7in}{!}{\includegraphics{fig1a.eps}}
+\end{center}
+\caption{Finite first difference derivatives with h=0.5.
+\label{fbigh}}
+\end{figure}
+
+         
+\begin{figure}[htb!]
+\begin{center}
+\leavevmode
+\resizebox{4.7in}{!}{\includegraphics{fig1b.eps}}
+\end{center}
+\caption{Finite first difference derivatives with h=0.05.
+\label{fsmallh}}
+\end{figure}
+
+The second derivative may also be calculated numerically as:
+\begin{eqnarray}
+f''(x) & = & \frac{ f(x+h) -2f(x) + f(x-h) }{h^2} + \mathcal{O}(h^2)
+\end{eqnarray}
+The results are shown in the in Figure \ref{ffpp} below. In this range of $x$ the
+$\exp()$ factor of
+$f(x)$  does not change much so that the second derivative should be approximately:
+\begin{eqnarray}
+f''(x) & \sim & \exp ( -0.04x^2 ) \times \frac{\partial^2}{\partial x^2}
+    \left[ \sin(x) \right] = - f(x)
+\end{eqnarray}
+             
+\begin{figure}[htb!]
+\begin{center}
+\leavevmode
+\resizebox{4.7in}{!}{\includegraphics{fig1c.eps}}
+\end{center}
+\caption{Second derivative with finite differences  (h=0.05).
+\label{ffpp}}
+\end{figure}
+
+This means that the second derivative is similar to the negative of $f(x)$, which is
+indeed apparent.
+
+\newpage 
+
+\begin{center}
+\underline{\bf \large Source Code Listing}
+\end{center}
+
+\begin{quote} \footnotesize
+\begin{verbatim}
+/*  hw01s13.cpp  AEP 438 Homework # 1
+
+    Calculate numerical derivatives of function feval()
+    using the forward difference, backward difference
+    and central difference  
+
+	Run on a Pentium with gcc 4.6
+
+	E. Kirkland 22-Jan-2013	
+*/
+
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+
+int main()
+{
+    int i, n=200;
+    double h=0.5, xmin=-7, xmax=+7.0, x, dx;
+//  double h=0.05, xmin=-7, xmax=+7.0, x, dx;
+    double f1, f2, f3, fpbd, fpfd, fpcd, fpp;
+    double feval( double );
+    FILE* fp;
+
+    /* open new file for output and write a title */
+
+    fp = fopen( "hw01.dat", "w+");
+    if( NULL == fp ) {
+        printf( "cannot open file\n" );
+        return( 0 );
+    }
+//  fprintf( fp, "    X    F(X)     FPFD    FPBD    FPCD     FPP \n");
+
+    dx = ( xmax - xmin ) / (n-1);
+    for( i=0; i<n; i++){
+       x = xmin + i * dx;
+       f1 = feval( x - h );
+       f2 = feval( x );
+       f3 = feval( x + h );
+       fpbd = (f2 - f1)/h;
+       fpfd = (f3 - f2) /h;
+       fpcd = ( f3 - f1 ) / ( 2.0 * h );
+       fpp = ( f3 - 2.0*f2 + f1 ) / ( h*h );
+       fprintf(fp, "%16.8f %16.8f %16.8f %16.8f %16.8f %16.8f \n",
+            x, f2, fpfd, fpbd, fpcd, fpp);
+       printf("%16.8f %16.8f %16.8f %16.8f %16.8f %16.8f \n",
+            x, f2, fpfd, fpbd, fpcd, fpp);
+    }   
+    fclose( fp );
+
+    return( EXIT_SUCCESS );
+}
+
+/*-------------------- feval ------------------------------
+/*
+   function to differentiate
+*/
+double feval( double x )
+{   return(  sin(x) * exp( -0.04*x*x ) );  }
+\end{verbatim}
+\end{quote}
+
+\end{document}

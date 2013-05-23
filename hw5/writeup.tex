@@ -1,0 +1,264 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+
+\title{AEP4380 HW5 \\ Three-Body Problem}
+\author{Dan Girshovich}
+\date{Mar 7, 2013}
+
+\usepackage{graphicx}
+\usepackage{subfigure}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{courier}
+\usepackage[margin=1.0in]{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\lstset {
+    language=C++,
+    backgroundcolor=\color{black!5}, % set backgroundcolor
+    basicstyle=\footnotesize,% basic font setting
+}
+
+\begin{document}
+
+\maketitle
+\section{Overview}
+This document details the results of a C++ program which calculates the two-dimensional trajectories of three bodies acting under gravity. The system chosen contains the Earth, the Moon, and a fake second moon acting classically. That is, the differential equations that dictate the motion of the bodies are found using Newton's second law and Newton's law of universal gravitation. These are numerically solved with the fifth-order Dormand-Prince method described in section 17.2.3 of Numerical Recipes \cite{numericalrecipes}. Notably, with this method the step size is constantly adjusted based on an estimated error in an effort to minimize computations.
+\section{Equations of Motion}
+Each body's motion is defined by the initial conditions:
+\begin{center}
+\begin{tabular}{ c | c c c }
+& Earth & Moon & Moon-2 \\ \hline
+$x$ & 0.0 & 0.0 & -6.0e8 \\
+$y$ & 0.0 & 3.84e8 &  4.05e8 \\
+$v_x$ & -12.593 & 1019.0 & 500.0 \\
+$v_y$ & 0.0 & 0.0 & 50.0 \\
+\end{tabular}
+\end{center}
+and Newton's Laws:
+\begin{align*}
+\frac{d^2\vec{x}_i}{dt^2} = \frac{\vec{F_i}}{m} = G \sum_{j \neq i} m_j \frac{\vec{x_j}-\vec{x_i}}{|\vec{x_j}-\vec{x_i}|^3}
+\end{align*}
+Where $\vec{x_i}$ and $m_i$ the position vector and mass of the $i^{th}$ body, respectively, and $G$ is the gravitational constant. As usual, this equation must be rewritten as a set of coupled first-order ODEs in order to use a numerical solver like Dormand-Prince:
+\begin{align*}
+\frac{d\vec{v_i}}{dt} &= \frac{\vec{F_i}}{m} = G \sum_{j \neq i} m_j \frac{\vec{x_j}-\vec{x_i}}{|\vec{x_j}-\vec{x_i}|^3} \\
+\frac{d\vec{x_i}}{dt} &= v_i
+\end{align*}
+This notation implies there $2 * N * D$ coupled first-order ODEs, where N is the number of bodies and D is the number of dimensions. In this case N = 3 and D = 2, so there are a total of 12 equations to solve in parallel. Notice that 12 initial conditions were already provided, as required.
+\section{The Dormand-Prince Method}
+\subsection{Overview}
+The Dormand-Prince method numerically solves these coupled ODEs within a requested bound of local error. To do this, it uses a fifth-order Runge-Kutta step that generates an approximation for $y_{n+1}$ from $y_n$. Using the same function evaluations from this step, but with different weight coefficients, an embedded fourth-order solution $y_{n+1}^*$ is also produced. These two estimates are then used to approximate the error for every step in each ODE as:
+\begin{align*}
+\Delta = |y_{n+1} - y_{n+1}^*|.
+\end{align*}
+Using $\Delta$ and the user specified error tolerances (absolute and relative), the method automatically updates the step size to minimize computation while staying within the error bound. \\ \\
+Importantly, very little additional computation is required per step to estimate the error compared to an ordinary fifth-order Runge-Kutta method. This is because no extra function evaluations (assumed to be relatively computationally expensive) are performed to estimate the error. Instead, different weights are applied to each function to produce an embedded low-order solution. This, then, provides the necessary information to approximate error. The weights used in this implementation were given by Dormand and Prince, hence the name of the method. \\ \\
+The total computation is actually greatly reduced (at least for the three-body problem given) because of the variable step size. The amount by which the step size varies in this problem is discussed in a later section.
+\subsection{Implementation}
+The implementation combines the \texttt{Odeint} and \texttt{StepperDopr5} objects from Chapter 17 of Numerical Recipes \cite{numericalrecipes} with the \texttt{rhs\_grav} object in the attached C++ code. The core of the implementation is in the following section of \texttt{gen\_traj\_data}:
+\begin{lstlisting}
+rhs_grav derivs(m, nbodies);
+Doub rtol = 1e-8, abtol = 0.0, hinit = 1.0, hmin = 0.0;
+Odeint<StepperDopr5<rhs_grav> > ode(ic, 0, secs, abtol, rtol, hinit, hmin,
+                                     out, derivs);
+ode.integrate();
+\end{lstlisting}
+The \texttt{rhs\_grav} object overrides the () operator, so its instances can act like the \texttt{derivs} function expected by the stepper. However, because it is an object, parameters which are not passed to \texttt{derivs} by the stepper can be passed to the constructor first. Using this method, information like the number of bodies in the system and the mass of each one is baked into the \texttt{derivs} ``function''. This way, the generic stepper implementation does not need to be modified to solve the differential equations for the three-body system. \\ \\
+Also, note that only a relative tolerance is used. The discussion on page 914 of Numerical Recipes \cite{numericalrecipes} mentions that for sets of equations whose dependent variables vary greatly in magnitude, using only relative error is a good strategy. For the three body problem, some of the equations give positions (order $10^8m$) and others give velocities (order $10^3\frac{m}{s}$). So, for this choice of units, using purely a relative error bound is a good approach.
+\section{Results}
+\subsection{Test System}
+The familiar Earth-Moon system was used as a test case for the code. This system was calculated by setting the mass of the second moon equal to 0. The calculated trajectories for 200 days are shown below.
+\begin{figure}[H]
+\subfigure[Earth]{\includegraphics[scale=.4]{img_one_moon_200/earth_xy.png}} \qquad
+\subfigure[Moon]{\includegraphics[scale=.4]{img_one_moon_200/moon_xy.png}} \qquad
+\caption{Trajectories of the Earth and Moon in the two-body system.}
+\end{figure}
+As expected the two bodies orbited their center of mass in nearly circular trajectories. Both orbits slightly drift towards the negative x direction, but this is only visible for the Earth due to the scales shown. Looking at the initial conditions, there is a net negative $v_x$ component of the center of mass, which explains the drift. Also, the data for the moon's trajectory shows constant period between 27 and 28 days, which confirms that the total integration error is reasonable over this time scale.
+\subsection{Three-body system}
+The full three-body system has a second moon with 0.2 the mass of the real moon. The calculated trajectories for 200 days are shown below. As expected both moons orbited the much more massive earth.
+\begin{figure}[H]
+\centering
+\includegraphics[scale=.55]{img_two_moon_200/all_xy.png}
+\caption{Trajectories in the three-body system.}
+\end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[scale=.55]{img_two_moon_200/earth_xy.png}
+\caption{The expanded view of the Earth shows its relatively small motion.}
+\end{figure}
+The average step size used by the stepper to produce these trajectories is on the order of $10^4$, but the minimum is on the order of $10^2$. This minimum represents the step size that would be required by a fixed step size method for it to achieve the same accuracy. So, the variable step size method is more efficient by two orders of magnitude. Of course, this is a very rough estimate and is it only valid for this system. The periodic dips to very small step size are caused by the large force experienced by the second moon as it swings around the Earth. During these times, the second moon's velocity diverges from the linear approximation more than usual. This requires the step size to shrink for the error bound to be maintained. Both the step size variation and the x position of the second moon are shown below.
+\begin{figure}[H]
+\subfigure[Step size]{\includegraphics[scale=.4]{img_two_moon_200/step_size.png}} \qquad
+\subfigure[x position of second moon]{\includegraphics[scale=.4]{img_two_moon_200/moon2_xt.png}} \qquad
+\end{figure}
+The spikes on both plots neatly align, as expected. Both the plot of the x position of the second moon and the diagram of the full trajectories suggest that the second moon's orbit is stabilizing over time.
+\clearpage
+\section{Source Code}
+\begin{lstlisting}
+/*
+AEP 4380 HW #5
+Dan Girshovich
+3/7/13
+Calculates the positions of three bodies acting under gravity.
+Compile with: g++ -std=c++0x -O2 -o gen_data hw5.cpp
+Tested on Mac OSX 10.8.2 with a Intel Core 2 Duo
+*/
+
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include "nr3.h"
+#include "stepper.h"
+#include "odeint.h"
+#include "stepperdopr5.h"
+
+// type / func defs
+void gen_traj_data(Doub, const char *);
+void alert_if_collision(Int, Int, Doub, Doub);
+FILE *open_file_w(const char *);
+
+const Doub G = 6.6726e-11; // Nm^2/kg^s (Gravitational constant)
+
+const Doub Me = 5.976e24; // kg (Mass of the Earth)
+const Doub Mm = 0.0123 * Me; // kg (Mass of the Moon)
+const Doub Mm2 = 0.2 * Mm; // kg (Mass of the second Moon)
+
+const Doub Re = 6.387e6; // m (Radius of the Earth)
+const Doub Rm = 3.476e6; // m (Radius of the Earth)
+const Doub Rm2 = 0.5 * Rm; // m (Radius of the Earth)
+
+int main()
+{
+    gen_traj_data(200, "out.dat");
+}
+
+// functor for the 'derivs' calculation in the n body problem
+struct rhs_grav
+{
+    Int n; // number of bodies
+    VecDoub m; // for the n masses
+    rhs_grav(VecDoub mm, Int nn) : m(mm), n(nn) {}
+    Int x_index(Int k) { return k; }
+    Int y_index(Int k) { return k + n; }
+    Int vx_index(Int k) { return k + 2 * n; }
+    Int vy_index(Int k) { return k + 3 * n; }
+    void set_vals(Doub &x, Doub &y, Doub &vx, Doub &vy, Int k, VecDoub &w)
+    {
+        x = w[x_index(k)];
+        y = w[y_index(k)];
+        vx = w[vx_index(k)];
+        vy = w[vy_index(k)];
+    }
+    // w should contain {x1,..., xn, y1,..., yn, vx1,..., vxn, vy1,..., vyn}
+    void operator() (const Doub t, VecDoub &w, VecDoub &dwdt)
+    {
+        Doub xi, xj, yi, yj, vxi, vxj, vyi, vyj;
+        for (Int i = 0; i < n; i++)
+        {
+            set_vals(xi, yi, vxi, vyi, i, w);
+            Doub sumx = 0, sumy = 0;
+            for (Int j = 0; j < n; j++)
+            {
+                if (i != j)
+                {
+                    set_vals(xj, yj, vxj, vyj, j, w);
+                    Doub d = pow(pow(xi - xj, 2) + pow(yi - yj, 2), 1.5);
+                    alert_if_collision(i, j, d, t);
+                    sumx += m[j] * (xj - xi) / d;
+                    sumy += m[j] * (yj - yi) / d;
+                }
+            }
+            dwdt[x_index(i)] = vxi;
+            dwdt[y_index(i)] = vyi;
+            dwdt[vx_index(i)] = G * sumx;
+            dwdt[vy_index(i)] = G * sumy;
+        }
+    }
+};
+
+// sets the initial positions and velocities for the 3 bodies
+void set_ics(VecDoub &ic)
+{
+    // initial x values
+    ic[0] = 0.0;
+    ic[1] = 0.0;
+    ic[2] = -6.0e8;
+    //initial y values
+    ic[3] = 0.0;
+    ic[4] = 3.84e8;
+    ic[5] = 4.05e8;
+    // initial vx values
+    ic[6] = -12.593;
+    ic[7] = 1019.0;
+    ic[8] = 500.0;
+    // initial vy values
+    ic[9] = 0.0;
+    ic[10] = 0.0;
+    ic[11] = 50.0;
+}
+
+// uses odeint with rhs_grav to generate the positions of the three bodies
+void gen_traj_data(Doub days, const char *fname)
+{
+    Doub secs = days * 24 * 60 * 60;
+    Int nbodies = 3;
+    Output out(0);
+    VecDoub m(3);
+    // masses of Earth, Moon, and Moon2
+    m[0] = Me, m[1] = Mm, m[2] = Mm2;
+    VecDoub ic(nbodies * 4); // there are 2 * 2 * N initial conditions
+    set_ics(ic);
+    rhs_grav derivs(m, nbodies);
+    Doub rtol = 1e-8, abtol = 0.0, hinit = 1.0, hmin = 0.0;
+    Odeint<StepperDopr5<rhs_grav> > ode(ic, 0, secs, abtol, rtol, hinit, hmin,
+                                        out, derivs);
+    ode.integrate();
+    FILE *fp = open_file_w(fname);
+    // print calculated positions of every body for each time step
+    for (Int i = 0; i < out.count; i++)
+    {
+        fprintf(fp, "%f %f %f %f %f %f %f \n",
+                out.xsave[i], out.ysave[0][i], out.ysave[1][i], out.ysave[2][i],
+                out.ysave[3][i], out.ysave[4][i], out.ysave[5][i]);
+    }
+    fclose(fp);
+}
+
+// debugging tool for detecting collisions
+void alert_if_collision(Int i, Int j, Doub d, Doub t)
+{
+    VecDoub r(3);
+    r[0] = Re, r[1] = Rm, r[2] = Rm2;
+    if (r[i] + r[j] > d)
+    {
+        printf("Collision: %f %d %d \n", t, i, j);
+        exit(1);
+    }
+}
+
+// opens a new file for output
+FILE *open_file_w(const char *fname)
+{
+    FILE *fp;
+    fp = fopen(fname, "w+");
+    if (NULL == fp)
+    {
+        printf("cannot open file\n");
+        return (EXIT_SUCCESS);
+    }
+    return fp;
+}
+\end{lstlisting}
+
+\begin{thebibliography}{9}
+
+\bibitem{numericalrecipes}
+  W.H. Press, S.A Teukolsky, W. T. Vetterling, and B. P. Flannery,
+  \emph{Numerical Recipies, The Art of Scientific Computing}.
+  Camb. Univ. Press,
+  3rd Edition,
+  2007.
+
+\end{thebibliography}
+
+\end{document}

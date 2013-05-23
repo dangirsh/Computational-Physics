@@ -1,0 +1,281 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+
+\title{AEP4380 HW7 \\ Time Dependent Schr\"{o}dinger Equation}
+\author{Dan Girshovich}
+\date{April 4, 2013}
+
+\usepackage{graphicx}
+\usepackage{subfigure}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{courier}
+\usepackage[margin=1.0in]{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\newcommand{\secpd}[1]{\frac{\partial^2}{\partial #1^2}}
+\newcommand{\pd}[1]{\frac{\partial}{\partial #1}}
+\newcommand{\dx}{\Delta x}
+\newcommand{\dt}{\Delta t}
+
+\lstset {
+    language=C++,
+    backgroundcolor=\color{black!5}, % set backgroundcolor
+    basicstyle=\footnotesize,% basic font setting
+}
+
+\begin{document}
+
+\maketitle
+\section{Overview}
+This document details the results of the included C++ program which solves the time dependent Schr\"{o}dinger equation for an electron wave packet propagating through a potential barrier in one dimension. This is a second-order partial differential equation with one spatial variable and one time variable. To solve this numerically, a finite difference form of the equation is used with the Crank-Nicolson method (section 20.2, Numerical Recipes \cite{numericalrecipes}). The core of the method is formulating the discrete values of $\psi$ at the next time step as solutions to a tridiagonal matrix equation. Note that all wave functions mentioned are unnormalized.
+\section{The Quantum System}
+\subsection{The Potential Barrier}
+The electron interacts with the potential barrier described by
+\begin{align*}
+V(x) = \frac{
+    V_0
+    }
+    {
+    1 + e^{
+            \frac{
+                \left(
+                    0.5L - x
+                \right)
+                }
+                {
+                \omega_v
+                }
+        }
+    },
+\end{align*}
+where the length of the region $L = 1000$\AA, the height of the barrier $V_0 = 4.05$eV, and the softness parameter $\omega_v = 7$\AA. The barrier is shown in Figure \ref{f1}.
+\begin{figure}
+  \centering
+  \includegraphics[scale=0.5]{potential.png}
+  \caption{The potential barrier}
+  \label{f1}
+\end{figure}
+\subsection{Initial Conditions}
+The electron wave packet starts out with a Gaussian wave function
+\begin{align*}
+\psi(x, t = 0) = e^{-\left(\frac{x - 0.3L}{s}\right)^2 + i x k_0},
+\end{align*}
+where $s = 20\text{\AA}$ and the wavenumber $k_0 = 1\text{\AA}^{-1}$. The real and imaginary parts of $\psi(x, t=0)$ are shown in Figure \ref{f2}, along with the probability distribution $|\psi(x, t=0)|^2$.
+\begin{figure}
+\subfigure[Real part]{\includegraphics[scale=.4]{psi0_1.png}} \qquad
+\subfigure[Imaginary part]{\includegraphics[scale=.4]{psi0_2.png}} \qquad
+\subfigure[Probability]{\includegraphics[scale=.4]{psi0_3.png}} \qquad
+\caption{Components of $\psi(x, t=0)$ and the probability distribution. The electron is initially well localized at $x = 300\text{\AA}$}
+  \label{f2}
+\end{figure}
+\subsection{Time Evolution}
+The wave packet dynamics are described by Schr\"{o}dinger's equation:
+\begin{align*}
+i\hbar \pd{t}\psi(x, t) =
+-\frac{\hbar^2}{2m_e} \secpd{x} \psi(x, t) + V(x, t) \psi(x, t).
+\end{align*}
+Given this relation, $\psi(x, t = 0)$, and $V(x)$, $\psi(x, t)$ can be found for all $t > 0$ by numerical propagation.
+\section{Crank-Nicolson Method}
+\subsection{Discretization}
+To solve $\psi(x, t)$ for all $t > 0$, the first step is to discretize space and time as follows:
+\begin{align*}
+x &= j\dx,\,\, j = 0, 1, 2, ... j_{max} \\
+t &= n\dt,\,\, n = 0, 1, 2, ... n_{max}
+\end{align*}
+Then, Schr\"{o}dinger's equation is also discretized into a finite difference form:
+\begin{align*}
+\psi(x - \dx, t + \dt)
++ \left[
+    \frac{2m\omega i}{\hbar} - 2 - \frac{2m\dx^2}{\hbar^2} V(x)
+\right] \psi(x, t + \dt)
++ \psi(x + \dx, t + \dt)
+= \\ - \psi(x - \dx, t)
++ \left[
+    \frac{2m\omega i}{\hbar} + 2 + \frac{2m\dx^2}{\hbar^2}V(x)
+\right] \psi(x, t)
+- \psi(x + \dx, t)
+\end{align*}
+where $\omega = \frac{2 \dx^2}{\dt}$. At time $t$, the right hand side of this equation is a known value for each $x$, while the three $\psi$ terms on the left hand side are unknown. This (Crank-Nicolson) setup is called fully implicit because of this quality.
+\subsection{Propagating a Solution}
+To solve for the values of $\psi$ and the next time step, finite difference equation is first rewritten as
+\begin{align*}
+\mathbf{M}\vec{\psi} = \vec{d}
+\end{align*}
+where $\mathbf{M}$ is a tridiagonal matrix containing the (time independent) coefficients of the $\psi$ terms on the left hand side for each $x$. $\vec{d}$ contains the values of the right hand side of the equation for each $x$ at $t$. Finally, $\vec{\psi}$ has the values for $\psi$ at $t + \dt$ for each $x$. So, moving the solution forward in time is done by solving the matrix equation for $\vec{\psi}$. \\ \\
+A special technique can be used to do this which relies on the fact that the matrix is tridiagonal. This is discussed in section 2.4 of Numerical Recipes \cite{numericalrecipes} and the code is given in the function \texttt{tridiag}. Instead of storing the entire matrix, the three non-zero diagonals are stored separately in arrays. These arrays, along with those for $\vec{d}$ and $\vec{\psi}$ at $t$ are passed as arguments. Then, $\vec{\psi}$ is modified in place to become $\vec{\psi}$ at $t + \dt$.\\ \\
+To find $\vec{\psi}$ at $t = t'$ given $\vec{\psi}$ at $t = 0$, this process is simply repeated $\frac{t'}{\dt}$ times. Note, this method also relies on fixed values of $\psi$ at the spatial boundaries, which are set as $\psi(0, t) = \psi(L, t) = 0$ in this case.
+\subsection{Finding $\dx$ and $\dt$}
+To avoid discretization error, $\psi$ should not change drastically over $\dx$ ($\dx << \frac{1}{k_0}$). For the system described, $\dx = 0.1\text{\AA}$ is small enough to meet this condition. To find $\dt$, $\psi(x, t)$ is computed for decreasing values of $\dt$. The largest value of $\dt$ that produces consistent output is assumed to be accurate enough. $\dt$ on the order of $0.01$fs or lower gives consistent results for propagations on the order of $10$fs in duration.
+\subsection{Results}
+$|\psi(x, t)|^2$ is plotted for $10 < t < 50$fs with steps of $10$fs in Figure \ref{f3} using $\dx = 0.1\text{\AA}$ and $\dt = 0.01$fs. As expected, there is a reflected wave and a transmitted evanescent wave.\\\\
+As an extra check, the rough numerical integration of $|\psi(x, t)|^2$ for each $t$ and $0 < x < L$ is performed. This physically corresponds to the (unnormalized) probability of finding the electron anywhere in the region, so it is expected to be constant. As expected, the integral has the constant value of $25.0663$ for each $t$.
+\begin{figure}
+\subfigure[$10$ fs]{\includegraphics[scale=.4]{psi1_3.png}} \qquad
+\subfigure[$20$ fs]{\includegraphics[scale=.4]{psi2_3.png}} \qquad
+\subfigure[$30$ fs]{\includegraphics[scale=.4]{psi3_3.png}} \qquad
+\subfigure[$40$ fs]{\includegraphics[scale=.4]{psi4_3.png}} \qquad
+\subfigure[$50$ fs]{\includegraphics[scale=.4]{psi5_3.png}} \qquad
+\caption{Propagation of $|\psi(x, t)|^2$ near the barrier in intervals $10$fs apart.}
+  \label{f3}
+\end{figure}
+\clearpage
+\section{Implementation}
+\subsection{Overview}
+The code uses a modified version of \texttt{tridiag} that allows the use of complex data types and the bounds checking array class. This was achieved by replacing the \texttt{VecDoub} types with \texttt{array<T>} and passing in the STL \texttt{complex<double>} type for \texttt{T}. \\ \\
+The rest of the code is very straighforward, since the \texttt{a}, \texttt{b}, \texttt{c}, and \texttt{V} arrays are constant during the propagation. \texttt{phi} is updated in place by \texttt{tridiag} and \texttt{d} is refreshed in step with \texttt{phi} in \texttt{set\_d}.
+\subsection{Source Code}
+\begin{lstlisting}
+/*
+AEP 4380 HW #4
+Dan Girshovich
+4/4/13
+Solves the time dependent Schrodinger Eq for the propagation of an electron wave
+Compile with: g++ -std=c++0x -O2 -o gen_data hw7.cpp
+Tested on Mac OSX 10.8.2 with a Intel Core 2 Duo
+*/
+
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <fstream>
+#include <cmath>
+#include <complex>
+#include <functional>
+// #define ARRAYT_BOUNDS_CHECK
+#include "array.hpp"
+
+typedef std::complex<double> cx;
+
+// general constants
+const cx i = cx(0, 1); // imaginary constant i
+const double h_bar = 6.5821e-16; // eV-sec (Planck's constant / 2 pi)
+const double k = 3.801; // eV-A^2 (h_bar^2 / 2m for the electron)
+
+// for the potential
+const double L = 1000; // A (length of region)
+const double V_0 = 4.05; // eV (height of potential barrier)
+const double omega_v = 7; // A (softness of potential barrier)
+
+// for the wavefunction
+const double s = 20; // A (width of Gaussian wave function)
+const double k_0 = 1; // A^-1 (average wavenumber)
+
+// for the propagation
+const double dx = 0.1; // A sample size in space
+const double dt = 0.01; // fs sample size in time
+const double omega = 2 * dx * dx / (dt * 1e-15);
+const int j_max = L / dx;
+array<double> V = array<double>(j_max); // V(x) potential
+array<cx> psi = array<cx>(j_max); // psi(x) wavefunction at some time
+
+// elements in matrix equation for propagation
+array<cx> a = array<cx>(j_max);
+array<cx> b = array<cx>(j_max);
+array<cx> c = array<cx>(j_max);
+array<cx> d = array<cx>(j_max);
+
+// psi is held at 0 at the ends
+cx get_psi(int j) {
+    return (j == -1 || j == j_max) ? cx(0, 0) : psi(j);
+}
+
+// sets the values for d based on psi's current state (in time)
+void set_d() {
+    for (int j = 0; j < j_max; j++) {
+        cx z = (omega * i * h_bar + 2 * k + dx * dx * V(j)) / k;
+        d(j) = -1.0 * get_psi(j - 1) + z * get_psi(j) - get_psi(j + 1);
+    }
+}
+
+// gets a, b, c, d, V, and psi ready for propagation
+void init_arrays() {
+    for (int j = 0; j < j_max; j++) {
+        double x = j * dx;
+        V(j) = V_0 / (1 + exp((0.5 * L - x) / omega_v));
+        double z = (x - 0.3 * L) / s;
+        psi(j) = exp(-1 * z * z + i * x * k_0); // exp is overloaded for complex
+        a(j) = cx(1, 0);
+        b(j) = (omega * i * h_bar - 2 * k - dx * dx * V(j)) / k;
+        c(j) = cx(1, 0);
+        set_d();
+    }
+}
+
+// From section 2.4 of Numerical Recipes. Modified to use template for matrix
+// types and bounds checking array class.
+template<class T>
+void tridag(array<T> &a, array<T> &b, array<T> &c, array<T> &d, array<T> &u) {
+    int j, n = a.n();
+    T bet;
+    array<T> gam(n);
+    if (b(0) == 0.0) throw("Error 1 in tridag");
+    u(0) = d(0) / (bet = b(0));
+    for (j = 1; j < n; j++) {
+        gam(j) = c(j - 1) / bet;
+        bet = b(j) - a(j) * gam(j);
+        if (bet == 0.0) throw("Error 2 in tridag");
+        u(j) = (d(j) - a(j) * u(j - 1)) / bet;
+    }
+    for (j = (n - 2); j >= 0; j--)
+        u(j) -= gam(j + 1) * u(j + 1);
+}
+
+void output_potential() {
+    std::ofstream f;
+    f.open("potential.dat");
+    for (int j = 0; j < j_max; j++)
+        f << j *dx << " " << V(j) << "\n";
+    f.close();
+}
+
+void output_psi(std::string fname) {
+    std::ofstream f;
+    f.open(fname.c_str());
+    for (int j = 0; j < j_max; j++) {
+        cx p = psi(j);
+        double x = j * dx;
+        f << x << " " << p.real() << " " << p.imag() << " " << norm(p) << "\n";
+    }
+    f.close();
+}
+
+// simple Reimann sum to find the total probability
+double integral_norm_psi() {
+    double integral = 0;
+    for (int j = 0; j < j_max; j++)
+        integral += norm(psi(j)) * dx;
+    return integral;
+}
+
+int main() {
+    init_arrays();
+    output_potential();
+    double t = 0;
+    for (int n = 0; n <= 5; n++) {
+        std::stringstream fname;
+        fname << "psi" << n << ".dat";
+        output_psi(fname.str());
+        std::cout << integral_norm_psi() << "\n";
+        // propagation
+        for (double t_next = t + 10; t < t_next; t += dt) {
+            tridag(a, b, c, d, psi);
+            set_d();
+        }
+    }
+}
+\end{lstlisting}
+
+\begin{thebibliography}{9}
+
+\bibitem{numericalrecipes}
+  W.H. Press, S.A Teukolsky, W. T. Vetterling, and B. P. Flannery,
+  \emph{Numerical Recipies, The Art of Scientific Computing}.
+  Camb. Univ. Press,
+  3rd Edition,
+  2007.
+
+\end{thebibliography}
+
+\end{document}

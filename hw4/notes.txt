@@ -1,0 +1,1 @@
+jc x vs t stays the same between 10K and 100K for t in [0, 200]
