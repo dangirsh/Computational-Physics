@@ -1,6 +1,13 @@
 Computational-Physics
 =====================
 
-Backup of source and written reports for a computational physics course.
+![Butterfly IV](final_project/butterfly.png "Butterfly IV")
 
-Build steps vary, but run.sh is a good place to start for hw5 and onward.
+
+Selected reports:
+
+- [Recently Discovered Periodic Solutions to the Three-Body Problem](final_project/writeups/writeup.pdf)
+- [The FFT and Spectral Methods](hw10/writeup.pdf)
+- [Boundary Value Problems and Relaxation](hw6/writeup.pdf)
+- [Ordinary Differential Equations and Chaotic Systems](hw4/writeup.pdf)
+- [Time Dependent Schrodinger Equation](hw7/writeup.pdf)
