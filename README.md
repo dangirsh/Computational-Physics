@@ -1,7 +1,9 @@
 Computational-Physics
 =====================
 
-![Butterfly IV](final_project/butterfly.png "Butterfly IV")
+![Butterfly IV Real Space](final_project/butterfly.png "Butterfly IV")
+![Butterfly IV Phase Space](final_project/butterfly-phase.png "Butterfly IV Phase Space")
+
 
 
 Selected reports:
